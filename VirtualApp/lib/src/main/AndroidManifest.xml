@@ -244,7 +244,7 @@
 
         <provider
             android:name="com.lody.virtual.service.BinderProvider"
-            android:authorities="virtual.service.BinderProvider"
+            android:authorities="${applicationId}.virtual.service.BinderProvider"
             android:exported="false"
             android:process=":x"/>
 
@@ -534,10 +534,10 @@
                 android:value="Stub-User"/>
         </activity>
 
-
+        <!-- 12 provider-->
         <provider
             android:name="com.lody.virtual.client.stub.StubContentProvider$C0"
-            android:authorities="virtual.client.stub.StubContentProvider0"
+            android:authorities="${applicationId}.virtual.client.stub.StubContentProvider0"
             android:exported="false"
             android:process=":p0">
             <meta-data
@@ -547,7 +547,7 @@
 
         <provider
             android:name="com.lody.virtual.client.stub.StubContentProvider$C1"
-            android:authorities="virtual.client.stub.StubContentProvider1"
+            android:authorities="${applicationId}.virtual.client.stub.StubContentProvider1"
             android:exported="false"
             android:process=":p1">
             <meta-data
@@ -557,7 +557,7 @@
 
         <provider
             android:name="com.lody.virtual.client.stub.StubContentProvider$C2"
-            android:authorities="virtual.client.stub.StubContentProvider2"
+            android:authorities="${applicationId}.virtual.client.stub.StubContentProvider2"
             android:exported="false"
             android:process=":p2">
             <meta-data
@@ -568,7 +568,7 @@
 
         <provider
             android:name="com.lody.virtual.client.stub.StubContentProvider$C3"
-            android:authorities="virtual.client.stub.StubContentProvider3"
+            android:authorities="${applicationId}.virtual.client.stub.StubContentProvider3"
             android:exported="false"
             android:process=":p3">
             <meta-data
@@ -579,7 +579,7 @@
 
         <provider
             android:name="com.lody.virtual.client.stub.StubContentProvider$C4"
-            android:authorities="virtual.client.stub.StubContentProvider4"
+            android:authorities="${applicationId}.virtual.client.stub.StubContentProvider4"
             android:exported="false"
             android:process=":p4">
             <meta-data
@@ -590,7 +590,7 @@
 
         <provider
             android:name="com.lody.virtual.client.stub.StubContentProvider$C5"
-            android:authorities="virtual.client.stub.StubContentProvider5"
+            android:authorities="${applicationId}.virtual.client.stub.StubContentProvider5"
             android:exported="false"
             android:process=":p5">
             <meta-data
@@ -600,7 +600,7 @@
 
         <provider
             android:name="com.lody.virtual.client.stub.StubContentProvider$C6"
-            android:authorities="virtual.client.stub.StubContentProvider6"
+            android:authorities="${applicationId}.virtual.client.stub.StubContentProvider6"
             android:exported="false"
             android:process=":p6">
             <meta-data
@@ -610,7 +610,7 @@
 
         <provider
             android:name="com.lody.virtual.client.stub.StubContentProvider$C7"
-            android:authorities="virtual.client.stub.StubContentProvider7"
+            android:authorities="${applicationId}.virtual.client.stub.StubContentProvider7"
             android:exported="false"
             android:process=":p7">
             <meta-data
@@ -620,7 +620,7 @@
 
         <provider
             android:name="com.lody.virtual.client.stub.StubContentProvider$C8"
-            android:authorities="virtual.client.stub.StubContentProvider8"
+            android:authorities="${applicationId}.virtual.client.stub.StubContentProvider8"
             android:exported="false"
             android:process=":p8">
             <meta-data
@@ -630,7 +630,7 @@
 
         <provider
             android:name="com.lody.virtual.client.stub.StubContentProvider$C9"
-            android:authorities="virtual.client.stub.StubContentProvider9"
+            android:authorities="${applicationId}.virtual.client.stub.StubContentProvider9"
             android:exported="false"
             android:process=":p9">
             <meta-data
@@ -640,7 +640,7 @@
 
         <provider
             android:name="com.lody.virtual.client.stub.StubContentProvider$C10"
-            android:authorities="virtual.client.stub.StubContentProvider10"
+            android:authorities="${applicationId}.virtual.client.stub.StubContentProvider10"
             android:exported="false"
             android:process=":p10">
             <meta-data
@@ -650,7 +650,7 @@
 
         <provider
             android:name="com.lody.virtual.client.stub.StubContentProvider$C11"
-            android:authorities="virtual.client.stub.StubContentProvider11"
+            android:authorities="${applicationId}.virtual.client.stub.StubContentProvider11"
             android:exported="false"
             android:process=":p11">
             <meta-data
@@ -660,7 +660,7 @@
 
         <provider
             android:name="com.lody.virtual.client.stub.StubContentProvider$C12"
-            android:authorities="virtual.client.stub.StubContentProvider12"
+            android:authorities="${applicationId}.virtual.client.stub.StubContentProvider12"
             android:exported="false"
             android:process=":p12">
             <meta-data

@@ -6,7 +6,7 @@ android {
     buildToolsVersion "23.0.3"
 
     defaultConfig {
-        applicationId "io.virtualapp"
+        applicationId "io.virtualapp.myfork"
         minSdkVersion 15
         targetSdkVersion 21
         versionCode 1

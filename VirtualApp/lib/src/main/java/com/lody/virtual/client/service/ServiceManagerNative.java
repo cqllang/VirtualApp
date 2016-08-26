@@ -24,7 +24,8 @@ public class ServiceManagerNative {
 	public static final String ACCOUNT_MANAGER = "account";
 	public static final String INTENT_FILTER_MANAGER = "intent_filter";
 	private static final String TAG = ServiceManagerNative.class.getSimpleName();
-	private static final String SERVICE_CP_AUTH = "virtual.service.BinderProvider";
+//	public static final String SERVICE_CP_AUTH = "virtual.service.BinderProvider";
+	public static String SERVICE_CP_AUTH = "";
 
 	private static IServiceFetcher sFetcher;
 
