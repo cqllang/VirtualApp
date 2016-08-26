@@ -1,8 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest
     xmlns:android="http://schemas.android.com/apk/res/android"
-    package="io.virtualapp"
-    >
+    package="io.virtualapp">
 
     <application
         android:name=".VApp"
@@ -40,7 +39,7 @@
 
         <meta-data
             android:name="UMENG_APPKEY"
-            android:value="5792f68f67e58e08ee000ee1">
+            android:value="8888888888888888888">
         </meta-data>
         <meta-data
             android:name="UMENG_CHANNEL"
