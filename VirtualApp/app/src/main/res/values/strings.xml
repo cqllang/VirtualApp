@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">VirtualApp</string>
+    <string name="app_name">VADemo</string>
     <string name="app_welcome">Welcome to Virtual App</string>
     <string name="setup_enter_new_world">Enter new world</string>
     <string name="wait">Please wait…</string>
