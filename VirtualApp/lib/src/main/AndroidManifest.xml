@@ -201,7 +201,7 @@
 
     <permission
         android:name="com.lody.virtual.permission.VIRTUAL_BROADCAST"
-        android:protectionLevel="signature"/>
+        android:protectionLevel="normal"/>
 
     <uses-permission android:name="com.lody.virtual.permission.VIRTUAL_BROADCAST"/>
 
