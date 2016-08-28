@@ -30,7 +30,7 @@
             android:theme="@style/TransparentTheme"
             android:excludeFromRecents="true"
             android:noHistory="true"
-            android:taskAffinity="va.task.loading"/>
+            android:taskAffinity="va.taskmanager.loading"/>
 
         <activity
             android:theme="@style/Theme.AppCompat.Light.DarkActionBar"
