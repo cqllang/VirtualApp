@@ -8,6 +8,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.UserInfo;
 import android.graphics.Color;
+import android.net.Uri;
 import android.os.Bundle;
 import android.support.annotation.Nullable;
 import android.view.View;
@@ -21,6 +22,7 @@ import com.lody.virtual.os.VUserManager;
 import com.melnykov.fab.FloatingActionButton;
 import com.umeng.analytics.MobclickAgent;
 
+import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -92,7 +94,9 @@ public class HomeActivity extends VActivity implements HomeContract.HomeView {
 
 		});
 		findViewById(R.id.user_icon).setOnClickListener(v -> {
-			startActivity(new Intent(this, UserListActivity.class));
+		//			startActivity(new Intent(this, UserListActivity.class));
+
+            installApp("/sdcard/netnews.apk");
         });
 		mCrashFab.post(() -> {
 			int[] location = new int[2];
@@ -120,6 +124,15 @@ public class HomeActivity extends VActivity implements HomeContract.HomeView {
 		MobclickAgent.onEvent(this, "Hook", "xxxxxxxxxx");// Hook是标签，xxx是value
 		registerInstallerReceiver();
 	}
+	
+	public void installApp(String path) {
+        Intent intent = new Intent();
+        intent.setAction(android.content.Intent.ACTION_VIEW);
+        intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+        intent.putExtra(Constants.INTENT_PARAM_1, true);
+        intent.setDataAndType(Uri.fromFile(new File(path)), "application/vnd.android.package-archive");
+        startActivity(intent);
+    }
 
 	public void registerInstallerReceiver() {
 		IntentFilter filter = new IntentFilter();

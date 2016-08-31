@@ -56,4 +56,5 @@ public class Constants {
 	public static final String ACTION_USER_INFO_CHANGED = "virtual." + "android.intent.action.USER_CHANGED";
 
 	public static final String ACTION_USER_STARTED = "Virtual." + "android.intent.action.USER_STARTED";
+	public static final String INTENT_PARAM_1 = "param_1";
 }
