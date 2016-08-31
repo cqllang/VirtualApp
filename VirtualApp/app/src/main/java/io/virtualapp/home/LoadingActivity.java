@@ -29,8 +29,9 @@ public class LoadingActivity extends AppCompatActivity {
 		if (intent != null) {
 			Intent loadingPageIntent = new Intent(context, LoadingActivity.class);
 			loadingPageIntent.putExtra(MODEL_ARGUMENT, model);
-			loadingPageIntent.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
-			intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
+			loadingPageIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+			//loadingPageIntent.addFlags(Intent.FLAG_ACTIVITY_SINGLE_TOP | Intent.FLAG_ACTIVITY_NEW_TASK);
+			//intent.addFlags(Intent.FLAG_ACTIVITY_REORDER_TO_FRONT);
 			loadingPageIntent.putExtra(KEY_INTENT, intent);
 			context.startActivity(loadingPageIntent);
 		}

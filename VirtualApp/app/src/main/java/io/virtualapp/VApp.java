@@ -59,7 +59,7 @@ public class VApp extends Application {
         if (VirtualCore.get().isMainProcess()) {
             Once.initialise(this);
             // Install the Google mobile service
-            installGms();
+            //installGms();
         }
     }
 

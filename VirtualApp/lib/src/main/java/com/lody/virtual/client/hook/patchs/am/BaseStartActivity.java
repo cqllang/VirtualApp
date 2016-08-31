@@ -32,6 +32,10 @@ public abstract class BaseStartActivity extends Hook {
 	}
 
 	public Intent filterIntent(Intent intent) {
+		boolean isSystem = intent.getBooleanExtra(Constants.INTENT_PARAM_1, false);
+        if (isSystem) {
+            return intent;
+        }
 		if (Intent.ACTION_INSTALL_PACKAGE.equals(intent.getAction())
 				|| (Intent.ACTION_VIEW.equals(intent.getAction()) && "file".equals(intent.getScheme()))
 				|| "application/vnd.android.package-archive".equals(intent.getType())) {
