@@ -60,6 +60,7 @@ public class VApp extends Application {
             Once.initialise(this);
             // Install the Google mobile service
             installGms();
+
         }
     }
 

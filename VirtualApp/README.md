@@ -10,7 +10,6 @@
 - git merge upstream/master (git rebase upstream/master)
 ```
 
-
 ## 使用
 - 初始化
 在 *attachBaseContext()* 添加
@@ -32,3 +31,4 @@ VirtualCore.get().preOpt(appModel.packageName);
 VActivityManager.get().startActivity(intent, userId)
 - 删除
 VirtualCore.get().uninstallApp(app.packageName);
+

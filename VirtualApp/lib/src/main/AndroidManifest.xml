@@ -199,11 +199,6 @@
 
     <uses-feature android:name="android.hardware.camera"/>
 
-    <!--<permission-->
-        <!--android:name="com.lody.virtual.permission.VIRTUAL_BROADCAST"-->
-        <!--android:protectionLevel="normal"/>-->
-
-    <!--<uses-permission android:name="com.lody.virtual.permission.VIRTUAL_BROADCAST"/>-->
 
     <application>
         <activity
