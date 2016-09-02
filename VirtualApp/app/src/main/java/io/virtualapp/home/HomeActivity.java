@@ -20,7 +20,7 @@ import com.lody.virtual.helper.proto.AppSetting;
 import com.lody.virtual.os.VUserHandle;
 import com.lody.virtual.os.VUserManager;
 import com.melnykov.fab.FloatingActionButton;
-import com.umeng.analytics.MobclickAgent;
+
 
 import java.io.File;
 import java.util.ArrayList;
@@ -104,24 +104,6 @@ public class HomeActivity extends VActivity implements HomeContract.HomeView {
 			mPagerView.setBottomLine(location[1]);
 		});
 
-		// 友盟统计 modify by young
-		MobclickAgent.setDebugMode(true);
-		// SD
-		// K在统计Fragment时，需要关闭Activity自带的页面统计，
-		// 然后在每个页面中重新集成页面统计的代码(包括调用了 onResume 和 onPause 的Activity)。
-		MobclickAgent.openActivityDurationTrack(false);
-		// MobclickAgent.setAutoLocation(true);
-		// MobclickAgent.setSessionContinueMillis(1000);
-		// MobclickAgent.startWithConfigure(
-		// new UMAnalyticsConfig(mContext, "4f83c5d852701564c0000011", "Umeng",
-		// EScenarioType.E_UM_NORMAL));
-		MobclickAgent.setScenarioType(this, MobclickAgent.EScenarioType.E_UM_NORMAL);
-		// ATTENTION: This was auto-generated to implement the App Indexing API.
-		// See https://g.co/AppIndexing/AndroidStudio for more information.
-      /**
-		 * 事件统计
-		 */
-		MobclickAgent.onEvent(this, "Hook", "xxxxxxxxxx");// Hook是标签，xxx是value
 		registerInstallerReceiver();
 	}
 	
@@ -149,9 +131,6 @@ public class HomeActivity extends VActivity implements HomeContract.HomeView {
 	@Override
 	protected void onResume() {
 		super.onResume();
-
-		MobclickAgent.onPageStart(TAG);
-		MobclickAgent.onResume(this);;
 	}
 
 	@Override
@@ -210,8 +189,6 @@ public class HomeActivity extends VActivity implements HomeContract.HomeView {
 	@Override
 	protected void onPause() {
 		super.onPause();
-		MobclickAgent.onPageEnd(TAG);
-		MobclickAgent.onPause(this);
 	}
 
 	@Override

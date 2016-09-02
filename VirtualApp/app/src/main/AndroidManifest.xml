@@ -37,14 +37,14 @@
             android:name=".users.UserListActivity"/>
 
 
-        <meta-data
-            android:name="UMENG_APPKEY"
-            android:value="8888888888888888888">
-        </meta-data>
-        <meta-data
-            android:name="UMENG_CHANNEL"
-            android:value="Umeng">
-        </meta-data>
+        <!--<meta-data-->
+            <!--android:name="UMENG_APPKEY"-->
+            <!--android:value="8888888888888888888">-->
+        <!--</meta-data>-->
+        <!--<meta-data-->
+            <!--android:name="UMENG_CHANNEL"-->
+            <!--android:value="Umeng">-->
+        <!--</meta-data>-->
         <meta-data
             android:name="com.google.android.gms.version"
             android:value="@integer/google_play_services_version"/>
