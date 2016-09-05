@@ -14,10 +14,12 @@ import android.os.RemoteException;
 import android.util.SparseArray;
 
 import com.lody.virtual.client.core.VirtualCore;
+import com.lody.virtual.helper.proto.StubActivityRecord;
 import com.lody.virtual.helper.utils.ComponentUtils;
 
+import java.util.ArrayList;
 import java.util.Iterator;
-import java.util.List;
+import java.util.ListIterator;
 
 import static android.content.pm.ActivityInfo.LAUNCH_SINGLE_INSTANCE;
 import static android.content.pm.ActivityInfo.LAUNCH_SINGLE_TASK;
@@ -33,8 +35,7 @@ import static android.content.pm.ActivityInfo.LAUNCH_SINGLE_TOP;
 	private final VActivityManagerService mService;
 
 	/**
-	 * [Key] = TaskId
-	 * [Value] = TaskRecord
+	 * [Key] = TaskId [Value] = TaskRecord
 	 */
 	private final SparseArray<TaskRecord> mHistory = new SparseArray<>();
 
@@ -42,15 +43,19 @@ import static android.content.pm.ActivityInfo.LAUNCH_SINGLE_TOP;
 
 		@Override
 		public void handleMessage(Message msg) {
-			int N = mHistory.size();
-			while (N-- > 0) {
-				TaskRecord task = mHistory.valueAt(N);
-				for (ActivityRecord r : task.activities) {
-					if (r.marked) {
-						try {
-							r.process.client.finishActivity(r.token);
-						} catch (RemoteException e) {
-							e.printStackTrace();
+			synchronized (mHistory) {
+				int N = mHistory.size();
+				while (N-- > 0) {
+					final TaskRecord task = mHistory.valueAt(N);
+					synchronized (task) {
+						for (ActivityRecord r : task.activities) {
+							if (r.marked) {
+								try {
+									r.process.client.finishActivity(r.token);
+								} catch (RemoteException e) {
+									e.printStackTrace();
+								}
+							}
 						}
 					}
 				}
@@ -62,7 +67,6 @@ import static android.content.pm.ActivityInfo.LAUNCH_SINGLE_TOP;
 		this.mService = mService;
 		mAM = (ActivityManager) VirtualCore.get().getContext().getSystemService(Context.ACTIVITY_SERVICE);
 	}
-
 
 	private static void removeFlags(Intent intent, int flags) {
 		intent.setFlags(intent.getFlags() & ~flags);
@@ -91,7 +95,6 @@ import static android.content.pm.ActivityInfo.LAUNCH_SINGLE_TOP;
 		}
 	}
 
-
 	private TaskRecord findTaskByAffinityLocked(int userId, String affinity) {
 		for (int i = 0; i < this.mHistory.size(); i++) {
 			TaskRecord r = this.mHistory.valueAt(i);
@@ -102,7 +105,7 @@ import static android.content.pm.ActivityInfo.LAUNCH_SINGLE_TOP;
 		return null;
 	}
 
-	private void removeTaskByIdLocked(int taskId) {
+	private void removeTaskLocked(int taskId) {
 		synchronized (mHistory) {
 			mHistory.remove(taskId);
 		}
@@ -139,21 +142,23 @@ import static android.content.pm.ActivityInfo.LAUNCH_SINGLE_TOP;
 	private boolean markTaskByClearTarget(TaskRecord task, ClearTarget clearTarget, ComponentName component) {
 		boolean marked = false;
 		switch (clearTarget) {
-			case TASK: {
+			case TASK : {
 				for (ActivityRecord r : task.activities) {
 					r.marked = true;
 					marked = true;
 				}
-			} break;
-			case ACTIVITY: {
+			}
+				break;
+			case ACTIVITY : {
 				for (ActivityRecord r : task.activities) {
 					if (r.component.equals(component)) {
 						r.marked = true;
 						marked = true;
 					}
 				}
-			} break;
-			case TOP: {
+			}
+				break;
+			case TOP : {
 				int N = task.activities.size();
 				while (N-- > 0) {
 					ActivityRecord r = task.activities.get(N);
@@ -168,14 +173,47 @@ import static android.content.pm.ActivityInfo.LAUNCH_SINGLE_TOP;
 					}
 				}
 
-			} break;
+			}
+				break;
 		}
 		return marked;
+	}
+
+	/**
+	 * App started in VA may be removed in OverView screen, then AMS.removeTask will be invoked,
+	 * all data struct about the task in AMS are released, while the client's process is still alive.
+	 * So remove related data in VA as well. A new TaskRecord will be recreated in `onActivityCreated`
+	 *
+	 */
+	private void optimizeTasksLocked() {
+		@SuppressWarnings("deprecation")
+		ArrayList<ActivityManager.RecentTaskInfo> recentTask = new ArrayList<>(mAM.getRecentTasks(Integer.MAX_VALUE,
+				ActivityManager.RECENT_WITH_EXCLUDED | ActivityManager.RECENT_IGNORE_UNAVAILABLE));
+		int N = mHistory.size();
+		while (N-- > 0) {
+			TaskRecord task = mHistory.valueAt(N);
+			ListIterator<ActivityManager.RecentTaskInfo> iterator = recentTask.listIterator();
+			boolean taskAlive = false;
+			while (iterator.hasNext()) {
+				ActivityManager.RecentTaskInfo info = iterator.next();
+				if (info.id == task.taskId) {
+					taskAlive = true;
+					iterator.remove();
+					break;
+				}
+			}
+			if (!taskAlive) {
+				mHistory.removeAt(N);
+			}
+		}
 	}
 
 	@SuppressWarnings("deprecation")
 	public int startActivityLocked(int userId, Intent intent, ActivityInfo info, IBinder resultTo, Bundle options,
 			int requestCode) {
+
+		optimizeTasksLocked();
+
 		Intent destIntent;
 		ActivityRecord sourceRecord = findActivityByToken(userId, resultTo);
 		TaskRecord sourceTask = sourceRecord != null ? sourceRecord.task : null;
@@ -220,22 +258,26 @@ import static android.content.pm.ActivityInfo.LAUNCH_SINGLE_TOP;
 							? ReuseTarget.MULTIPLE
 							: ReuseTarget.AFFINITY;
 				}
-			} break;
+			}
+				break;
 			case LAUNCH_SINGLE_TASK : {
 				clearTarget = ClearTarget.TOP;
 				reuseTarget = containFlags(intent, Intent.FLAG_ACTIVITY_MULTIPLE_TASK)
 						? ReuseTarget.MULTIPLE
 						: ReuseTarget.AFFINITY;
-			} break;
+			}
+				break;
 			case LAUNCH_SINGLE_INSTANCE : {
 				clearTarget = ClearTarget.TOP;
 				reuseTarget = ReuseTarget.AFFINITY;
-			} break;
+			}
+				break;
 			default : {
 				if (containFlags(intent, Intent.FLAG_ACTIVITY_SINGLE_TOP)) {
 					clearTarget = ClearTarget.TOP;
 				}
-			} break;
+			}
+				break;
 		}
 		if (clearTarget == ClearTarget.NOTHING) {
 			if (containFlags(intent, Intent.FLAG_ACTIVITY_REORDER_TO_FRONT)) {
@@ -245,6 +287,7 @@ import static android.content.pm.ActivityInfo.LAUNCH_SINGLE_TOP;
 		if (sourceTask == null && reuseTarget == ReuseTarget.CURRENT) {
 			reuseTarget = ReuseTarget.AFFINITY;
 		}
+
 		String affinity = ComponentUtils.getTaskAffinity(info);
 		TaskRecord reuseTask = null;
 		switch (reuseTarget) {
@@ -268,78 +311,45 @@ import static android.content.pm.ActivityInfo.LAUNCH_SINGLE_TOP;
 				destIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
 				destIntent.addFlags(Intent.FLAG_ACTIVITY_MULTIPLE_TASK);
 				destIntent.addFlags(Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
-				if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP)
+
+				if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP) {
 					destIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_WHEN_TASK_RESET);
-				else
+				} else {
 					destIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_DOCUMENT);
+				}
+
 				if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
 					VirtualCore.get().getContext().startActivity(destIntent, options);
 				} else {
 					VirtualCore.get().getContext().startActivity(destIntent);
 				}
+
 			}
 		} else if (clearTarget != ClearTarget.TOP && ComponentUtils.isSameIntent(intent, reuseTask.taskRoot)) {
-			/* FIXME: the `getRecentTasks` is deprecated, be careful */
-			List<ActivityManager.RecentTaskInfo> recentTask = mAM.getRecentTasks(Integer.MAX_VALUE,
-					ActivityManager.RECENT_WITH_EXCLUDED | ActivityManager.RECENT_IGNORE_UNAVAILABLE);
-			boolean taskIsAlive = false;
-			for (ActivityManager.RecentTaskInfo taskInfo : recentTask) {
-				/* NOTE: must not check taskInfo.userId here, cause it always be 0! */
-				if (taskInfo.id == reuseTask.taskId) {
-					taskIsAlive = true;
-					break;
-				}
-			}
-
-			if (taskIsAlive) {
-				mAM.moveTaskToFront(reuseTask.taskId, 0);
-			} else {
-				/* NOTE: the task has been removed by AMS with `removeTask`, but the process is still alive.
-				   So remove it in VA as well, a new TaskRecord will be recreated in `onActivityCreated` */
-				removeTaskByIdLocked(reuseTask.taskId);
-
-				//FIXME: clean code in soon.
-				destIntent = startActivityProcess(userId, null, intent, info);
-				if (destIntent != null) {
-					destIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-					destIntent.addFlags(Intent.FLAG_ACTIVITY_MULTIPLE_TASK);
-					destIntent.addFlags(Intent.FLAG_ACTIVITY_RESET_TASK_IF_NEEDED);
-					if (Build.VERSION.SDK_INT < Build.VERSION_CODES.LOLLIPOP)
-						destIntent.addFlags(Intent.FLAG_ACTIVITY_CLEAR_WHEN_TASK_RESET);
-					else
-						destIntent.addFlags(Intent.FLAG_ACTIVITY_NEW_DOCUMENT);
-					if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
-						VirtualCore.get().getContext().startActivity(destIntent, options);
-					} else {
-						VirtualCore.get().getContext().startActivity(destIntent);
-					}
-				}
-			}
-
 			// In this case, we only need to move the task to front.
+			mAM.moveTaskToFront(reuseTask.taskId, 0);
 
 		} else {
 			boolean delivered = false;
 			mAM.moveTaskToFront(reuseTask.taskId, 0);
 			if (clearTarget == ClearTarget.TOP) {
-                taskMarked = markTaskByClearTarget(reuseTask, clearTarget, intent.getComponent());
-                ActivityRecord topRecord = topActivityInTask(reuseTask);
+				taskMarked = markTaskByClearTarget(reuseTask, clearTarget, intent.getComponent());
+				ActivityRecord topRecord = topActivityInTask(reuseTask);
 				// Target activity is on top
-                if (topRecord != null && topRecord.component.equals(intent.getComponent())) {
-                    deliverNewIntentLocked(sourceRecord, topRecord, intent);
-                    delivered = true;
-                }
-            }
+				if (topRecord != null && topRecord.component.equals(intent.getComponent())) {
+					deliverNewIntentLocked(sourceRecord, topRecord, intent);
+					delivered = true;
+				}
+			}
+			if (taskMarked) {
+				scheduleFinishMarkedActivity();
+			}
 			if (!delivered) {
-                destIntent = startActivityProcess(userId, sourceRecord, intent, info
-				);
-                if (destIntent != null) {
-                    startActivityFromSourceTask(reuseTask, destIntent, info, options);
-                }
-            }
-		}
-		if (taskMarked) {
-			scheduleFinishMarkedActivity();
+				destIntent = startActivityProcess(userId, sourceRecord, intent, info);
+				if (destIntent != null) {
+					startActivityFromSourceTask(reuseTask, destIntent, info, requestCode, options);
+				}
+			}
 		}
 
 		return 0;
@@ -350,12 +360,12 @@ import static android.content.pm.ActivityInfo.LAUNCH_SINGLE_TOP;
 		mTaskHandler.sendEmptyMessage(0);
 	}
 
-	private boolean startActivityFromSourceTask(TaskRecord task, Intent intent, ActivityInfo info, Bundle options) {
+	private boolean startActivityFromSourceTask(TaskRecord task, Intent intent, ActivityInfo info, int requestCode, Bundle options) {
 		ActivityRecord top = topActivityInTask(task);
 		if (top != null) {
 			if (startActivityProcess(task.userId, top, intent, info) != null) {
 				try {
-					return top.process.client.startActivityFromToken(top.token, intent, options);
+					return top.process.client.startActivityFromToken(top.token, intent, requestCode, options);
 				} catch (RemoteException e) {
 					e.printStackTrace();
 				}
@@ -365,6 +375,7 @@ import static android.content.pm.ActivityInfo.LAUNCH_SINGLE_TOP;
 	}
 
 	private Intent startActivityProcess(int userId, ActivityRecord sourceRecord, Intent intent, ActivityInfo info) {
+		intent = new Intent(intent);
 		ProcessRecord targetApp = mService.startProcessIfNeedLocked(info.processName, userId, info.packageName);
 		if (targetApp == null) {
 			return null;
@@ -377,30 +388,30 @@ import static android.content.pm.ActivityInfo.LAUNCH_SINGLE_TOP;
 			component = ComponentUtils.toComponentName(info);
 		}
 		targetIntent.setType(component.flattenToString());
-		targetIntent.putExtra("intent", new Intent(intent));
-		targetIntent.putExtra("info", info);
-		if (sourceRecord != null) {
-			targetIntent.putExtra("caller_package", sourceRecord.component.getPackageName());
-		}
-		targetIntent.putExtra("user_id", userId);
+		StubActivityRecord saveInstance = new StubActivityRecord(intent, info,
+				sourceRecord != null ? sourceRecord.component : null, userId);
+		targetIntent.putExtra("_VA_|_stub_", saveInstance);
 		return targetIntent;
 	}
 
-
-	public void onActivityCreated(ProcessRecord targetApp, ComponentName component, IBinder token, Intent taskRoot, String affinity, int taskId, int launchMode, int flags, int clearTargetOrder) {
+	public void onActivityCreated(ProcessRecord targetApp, ComponentName component, ComponentName caller, IBinder token,
+								  Intent taskRoot, String affinity, int taskId, int launchMode, int flags) {
 		synchronized (mHistory) {
+			optimizeTasksLocked();
 			TaskRecord task = mHistory.get(taskId);
 			if (task == null) {
 				task = new TaskRecord(taskId, targetApp.userId, affinity, taskRoot);
 				mHistory.put(taskId, task);
 			}
-			ActivityRecord record = new ActivityRecord(task, component, token, targetApp.userId, targetApp, launchMode, flags, affinity);
+			ActivityRecord record = new ActivityRecord(task, component, caller, token, targetApp.userId, targetApp, launchMode,
+					flags, affinity);
 			task.activities.add(record);
 		}
 	}
 
 	public void onActivityResumed(int userId, IBinder token) {
 		synchronized (mHistory) {
+			optimizeTasksLocked();
 			ActivityRecord r = findActivityByToken(userId, token);
 			if (r != null) {
 				r.task.activities.remove(r);
@@ -411,6 +422,7 @@ import static android.content.pm.ActivityInfo.LAUNCH_SINGLE_TOP;
 
 	public boolean onActivityDestroyed(int userId, IBinder token) {
 		synchronized (mHistory) {
+			optimizeTasksLocked();
 			ActivityRecord r = findActivityByToken(userId, token);
 			if (r != null) {
 				r.task.activities.remove(r);
@@ -425,6 +437,7 @@ import static android.content.pm.ActivityInfo.LAUNCH_SINGLE_TOP;
 
 	public void processDied(ProcessRecord record) {
 		synchronized (mHistory) {
+			optimizeTasksLocked();
 			int N = mHistory.size();
 			while (N-- > 0) {
 				TaskRecord task = mHistory.valueAt(N);
@@ -440,6 +453,26 @@ import static android.content.pm.ActivityInfo.LAUNCH_SINGLE_TOP;
 				}
 			}
 
+		}
+	}
+
+	public String getPackageForToken(int userId, IBinder token) {
+		synchronized (mHistory) {
+			ActivityRecord r = findActivityByToken(userId, token);
+			if (r != null) {
+				return r.component.getPackageName();
+			}
+			return null;
+		}
+	}
+
+	public ComponentName getCallingActivity(int userId, IBinder token) {
+		synchronized (mHistory) {
+			ActivityRecord r = findActivityByToken(userId, token);
+			if (r != null) {
+				return r.component;
+			}
+			return null;
 		}
 	}
 

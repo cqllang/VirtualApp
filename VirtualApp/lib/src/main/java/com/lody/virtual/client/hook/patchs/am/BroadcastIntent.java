@@ -13,6 +13,7 @@ import com.lody.virtual.client.env.SpecialComponentList;
 import com.lody.virtual.client.hook.base.Hook;
 import com.lody.virtual.helper.utils.BitmapUtils;
 import com.lody.virtual.helper.utils.ComponentUtils;
+import com.lody.virtual.os.VUserHandle;
 
 import java.lang.reflect.Method;
 
@@ -23,22 +24,20 @@ import java.lang.reflect.Method;
  */
 /* package */ class BroadcastIntent extends Hook {
 
-	private static final String TAG = BroadcastIntent.class.getSimpleName();
-
 	@Override
 	public String getName() {
 		return "broadcastIntent";
 	}
 
 	@Override
-	public Object onHook(Object who, Method method, Object... args) throws Throwable {
+	public Object call(Object who, Method method, Object... args) throws Throwable {
 		Intent intent = (Intent) args[1];
 		String type = (String) args[2];
+		intent.setDataAndType(intent.getData(), type);
 		Intent newIntent = handleIntent(intent);
 		if (newIntent != null) {
 			args[1] = newIntent;
 		}
-		intent.setDataAndType(intent.getData(), type);
 		if (args[7] instanceof String || args[7] instanceof String[]) {
 			// clear the permission
 			args[7] = null;
@@ -61,7 +60,7 @@ import java.lang.reflect.Method;
 			if (newAction != null) {
 				intent.setAction(newAction);
 			}
-			return ComponentUtils.redirectBroadcastIntent(intent);
+			return ComponentUtils.redirectBroadcastIntent(intent, VUserHandle.myUserId());
 		}
 	}
 
@@ -71,37 +70,36 @@ import java.lang.reflect.Method;
 			ComponentName component = shortcut.resolveActivity(VirtualCore.getPM());
 			if (component != null) {
 				String pkg = component.getPackageName();
-				if (isAppPkg(pkg)) {
-					Intent newShortcutIntent = new Intent();
-					newShortcutIntent.setClassName(getHostPkg(), Constants.SHORTCUT_PROXY_ACTIVITY_NAME);
-					newShortcutIntent.addCategory(Intent.CATEGORY_DEFAULT);
-					newShortcutIntent.putExtra("_VA_|_intent_", shortcut);
-					newShortcutIntent.putExtra("_VA_|_uri_", shortcut.toUri(0));
-					intent.removeExtra(Intent.EXTRA_SHORTCUT_INTENT);
-					intent.putExtra(Intent.EXTRA_SHORTCUT_INTENT, newShortcutIntent);
+				Intent newShortcutIntent = new Intent();
+				newShortcutIntent.setClassName(getHostPkg(), Constants.SHORTCUT_PROXY_ACTIVITY_NAME);
+				newShortcutIntent.addCategory(Intent.CATEGORY_DEFAULT);
+				newShortcutIntent.putExtra("_VA_|_intent_", shortcut);
+				newShortcutIntent.putExtra("_VA_|_uri_", shortcut.toUri(0));
+				newShortcutIntent.putExtra("_VA_|_user_id_", VUserHandle.myUserId());
+				intent.removeExtra(Intent.EXTRA_SHORTCUT_INTENT);
+				intent.putExtra(Intent.EXTRA_SHORTCUT_INTENT, newShortcutIntent);
 
-					// 将icon替换为以Bitmap方式绘制的Shortcut Icon
-					Intent.ShortcutIconResource icon = intent.getParcelableExtra(Intent.EXTRA_SHORTCUT_ICON_RESOURCE);
-					if (icon != null && !TextUtils.equals(icon.packageName, getHostPkg())) {
-						try {
-							Resources resources = VirtualCore.get().getResources(pkg);
-							if (resources != null) {
-								int resId = resources.getIdentifier(icon.resourceName, "drawable", pkg);
-								if (resId > 0) {
-									Drawable iconDrawable = resources.getDrawable(resId);
-									Bitmap newIcon = BitmapUtils.drawableToBitMap(iconDrawable);
-									if (newIcon != null) {
-										intent.removeExtra(Intent.EXTRA_SHORTCUT_ICON_RESOURCE);
-										intent.putExtra(Intent.EXTRA_SHORTCUT_ICON, newIcon);
-									}
-								}
-							}
-						} catch (Throwable e) {
-							e.printStackTrace();
-							// Ignore
-						}
-					}
-				}
+				// 将icon替换为以Bitmap方式绘制的Shortcut Icon
+				Intent.ShortcutIconResource icon = intent.getParcelableExtra(Intent.EXTRA_SHORTCUT_ICON_RESOURCE);
+				if (icon != null && !TextUtils.equals(icon.packageName, getHostPkg())) {
+                    try {
+                        Resources resources = VirtualCore.get().getResources(pkg);
+                        if (resources != null) {
+                            int resId = resources.getIdentifier(icon.resourceName, "drawable", pkg);
+                            if (resId > 0) {
+                                Drawable iconDrawable = resources.getDrawable(resId);
+                                Bitmap newIcon = BitmapUtils.drawableToBitMap(iconDrawable);
+                                if (newIcon != null) {
+                                    intent.removeExtra(Intent.EXTRA_SHORTCUT_ICON_RESOURCE);
+                                    intent.putExtra(Intent.EXTRA_SHORTCUT_ICON, newIcon);
+                                }
+                            }
+                        }
+                    } catch (Throwable e) {
+                        e.printStackTrace();
+                        // Ignore
+                    }
+                }
 			}
 		}
 	}
@@ -110,7 +108,7 @@ import java.lang.reflect.Method;
 		Intent shortcut = intent.getParcelableExtra(Intent.EXTRA_SHORTCUT_INTENT);
 		if (shortcut != null) {
 			ComponentName componentName = shortcut.resolveActivity(getPM());
-			if (componentName != null && isAppPkg(componentName.getPackageName())) {
+			if (componentName != null) {
 				Intent newShortcutIntent = new Intent();
 				newShortcutIntent.putExtra("_VA_|_uri_", shortcut);
 				newShortcutIntent.setClassName(getHostPkg(), Constants.SHORTCUT_PROXY_ACTIVITY_NAME);
