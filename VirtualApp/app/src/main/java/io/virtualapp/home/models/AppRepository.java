@@ -32,6 +32,7 @@ public class AppRepository implements AppDataSource {
 	static {
 		String sdCardPath = Environment.getExternalStorageDirectory().getAbsolutePath();
 		sdCardScanPaths.add(sdCardPath);
+		sdCardScanPaths.add(sdCardPath + File.separator + Environment.DIRECTORY_DOWNLOADS);
 		sdCardScanPaths.add(sdCardPath + File.separator + "wandoujia" + File.separator + "app");
 		sdCardScanPaths
 				.add(sdCardPath + File.separator + "tencent" + File.separator + "tassistant" + File.separator + "apk");
