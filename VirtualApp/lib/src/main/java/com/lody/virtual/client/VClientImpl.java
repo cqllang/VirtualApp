@@ -9,12 +9,10 @@ import android.content.ContentResolver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.ApplicationInfo;
-import android.content.pm.ComponentInfo;
 import android.content.pm.PackageManager;
 import android.content.pm.ProviderInfo;
 import android.os.Binder;
 import android.os.Build;
-import android.os.Bundle;
 import android.os.ConditionVariable;
 import android.os.Handler;
 import android.os.IBinder;
@@ -22,28 +20,29 @@ import android.os.IInterface;
 import android.os.Looper;
 import android.os.Message;
 import android.os.Process;
-import android.os.RemoteException;
 
 import com.lody.virtual.IOHook;
 import com.lody.virtual.client.core.VirtualCore;
 import com.lody.virtual.client.env.VirtualRuntime;
 import com.lody.virtual.client.fixer.ContextFixer;
 import com.lody.virtual.client.hook.delegate.AppInstrumentation;
-import com.lody.virtual.client.hook.providers.ProviderHook;
 import com.lody.virtual.client.hook.secondary.ProxyServiceFactory;
 import com.lody.virtual.client.local.VActivityManager;
 import com.lody.virtual.client.local.VPackageManager;
 import com.lody.virtual.helper.utils.Reflect;
 import com.lody.virtual.helper.utils.VLog;
+import com.lody.virtual.os.VUserHandle;
+import com.lody.virtual.service.secondary.FakeIdentityBinder;
 
 import java.io.File;
 import java.util.Collections;
 import java.util.List;
-import java.util.regex.Pattern;
 
 import dalvik.system.PathClassLoader;
 import mirror.android.app.ActivityThread;
 import mirror.android.app.ContextImpl;
+import mirror.android.app.ContextImplICS;
+import mirror.android.app.ContextImplKitkat;
 import mirror.android.app.LoadedApk;
 import mirror.com.android.internal.content.ReferrerIntent;
 import mirror.dalvik.system.VMRuntime;
@@ -63,7 +62,6 @@ public final class VClientImpl extends IVClient.Stub {
 	@SuppressLint("StaticFieldLeak")
 	private static final VClientImpl gClient = new VClientImpl();
 	private Instrumentation mInstrumentation = AppInstrumentation.getDefault();
-	private static final Pattern sSplitAuthorityPattern = Pattern.compile(";");
 
 	private IBinder token;
 	private int vuid;
@@ -75,6 +73,7 @@ public final class VClientImpl extends IVClient.Stub {
 		return mBoundApplication != null;
 	}
 
+
 	public Application getCurrentApplication() {
 		return mInitialApplication;
 	}
@@ -85,6 +84,10 @@ public final class VClientImpl extends IVClient.Stub {
 
 	public int getVUid() {
 		return vuid;
+	}
+
+	public int getBaseVUid() {
+		return VUserHandle.getAppId(vuid);
 	}
 
 	public ClassLoader getClassLoader(ApplicationInfo appInfo) {
@@ -118,8 +121,14 @@ public final class VClientImpl extends IVClient.Stub {
 	}
 
 	@Override
-	public IBinder getAppThread() throws RemoteException {
-		return ActivityThread.getApplicationThread.call(VirtualCore.mainThread());
+	public IBinder getAppThread() {
+		Binder appThread = ActivityThread.getApplicationThread.call(VirtualCore.mainThread());
+		return new FakeIdentityBinder(appThread) {
+			@Override
+			protected int getFakeUid() {
+				return Process.SYSTEM_UID;
+			}
+		};
 	}
 
 	@Override
@@ -165,15 +174,15 @@ public final class VClientImpl extends IVClient.Stub {
 		);
 	}
 
-	public void bindApplicationCheckThread(final ComponentInfo info) {
+	public void bindApplication(final String packageName, final String processName) {
 		if (Looper.getMainLooper() == Looper.myLooper()) {
-			bindApplication(info, null);
+			bindApplicationNoCheck(packageName, processName, null);
 		} else {
 			final ConditionVariable lock = new ConditionVariable();
 			VirtualRuntime.getUIHandler().post(new Runnable() {
 				@Override
 				public void run() {
-					bindApplication(info, lock);
+					bindApplicationNoCheck(packageName, processName, lock);
 					lock.open();
 				}
 			});
@@ -181,11 +190,11 @@ public final class VClientImpl extends IVClient.Stub {
 		}
 	}
 
-	private void bindApplication(ComponentInfo info, ConditionVariable lock) {
+	private void bindApplicationNoCheck(String packageName, String processName, ConditionVariable lock) {
 		AppBindData data = new AppBindData();
-		data.appInfo = VPackageManager.get().getApplicationInfo(info.packageName, 0, getUserId(vuid));
-		data.processName = info.processName;
-		data.providers = VPackageManager.get().queryContentProviders(info.processName, vuid, PackageManager.GET_META_DATA);
+		data.appInfo = VPackageManager.get().getApplicationInfo(packageName, 0, getUserId(vuid));
+		data.processName = processName;
+		data.providers = VPackageManager.get().queryContentProviders(processName, getVUid(), PackageManager.GET_META_DATA);
 		mBoundApplication = data;
 		VirtualRuntime.setupRuntime(data.processName, data.appInfo);
 		Runtime.getRuntime().addShutdownHook(new Thread() {
@@ -219,6 +228,25 @@ public final class VClientImpl extends IVClient.Stub {
 		Object mainThread = VirtualCore.mainThread();
 		IOHook.startDexOverride();
 		Context context = createPackageContext(data.appInfo.packageName);
+		System.setProperty("java.io.tmpdir", context.getCacheDir().getAbsolutePath());
+		File filesDir = new File(data.appInfo.dataDir, "files");
+		File cacheDir = new File(data.appInfo.dataDir, "cache");
+		if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.KITKAT) {
+			if (ContextImplICS.mExternalFilesDir != null) {
+				ContextImplICS.mExternalFilesDir.set(context, filesDir);
+			}
+			if (ContextImplICS.mExternalCacheDir != null) {
+				ContextImplICS.mExternalCacheDir.set(context, cacheDir);
+			}
+		} else {
+			if (ContextImplKitkat.mExternalCacheDirs != null) {
+				ContextImplKitkat.mExternalCacheDirs.set(context, new File[] {cacheDir});
+			}
+			if (ContextImplKitkat.mExternalFilesDirs != null) {
+				ContextImplKitkat.mExternalFilesDirs.set(context, new File[] {filesDir});
+			}
+
+		}
 		mBoundApplication.info = ContextImpl.mPackageInfo.get(context);
 		fixBoundApp(mBoundApplication);
 		VMRuntime.setTargetSdkVersion.call(VMRuntime.getRuntime.call(), data.appInfo.targetSdkVersion);
@@ -227,9 +255,9 @@ public final class VClientImpl extends IVClient.Stub {
 		mInitialApplication = app;
 		mirror.android.app.ActivityThread.mInitialApplication.set(mainThread, app);
 		ContextFixer.fixContext(app);
-		List<ProviderInfo> providers = data.providers;
+		List<ProviderInfo> providers = VPackageManager.get().queryContentProviders(data.processName, vuid, PackageManager.GET_META_DATA);
 		if (providers != null) {
-			installContentProviders(providers);
+			installContentProviders(app, providers);
 		}
 		if (lock != null) {
 			lock.open();
@@ -275,11 +303,14 @@ public final class VClientImpl extends IVClient.Stub {
 		}
 	}
 
-	private void installContentProviders(List<ProviderInfo> providers) {
+	private void installContentProviders(Context app, List<ProviderInfo> providers) {
 		long origId = Binder.clearCallingIdentity();
+		Object mainThread = VirtualCore.mainThread();
 		try {
 			for (ProviderInfo cpi : providers) {
-				acquireProviderClient(cpi);
+				if (cpi.enabled) {
+					ActivityThread.installProvider(mainThread, app, cpi, null);
+				}
 			}
 		} finally {
 			Binder.restoreCallingIdentity(origId);
@@ -290,31 +321,24 @@ public final class VClientImpl extends IVClient.Stub {
 	@Override
 	public IBinder acquireProviderClient(ProviderInfo info) {
 		if (!VClientImpl.getClient().isBound()) {
-			VClientImpl.getClient().bindApplicationCheckThread(info);
+			VClientImpl.getClient().bindApplication(info.packageName, info.processName);
 		}
 		IInterface provider = null;
-		String[] authorities = sSplitAuthorityPattern.split(info.authority);
-		String authority = (authorities == null || authorities.length == 0) ? info.authority : authorities[0];
+		String[] authorities = info.authority.split(";");
+		String authority = authorities.length == 0 ? info.authority : authorities[0];
 		ContentResolver resolver = VirtualCore.get().getContext().getContentResolver();
-		ContentProviderClient client;
-		if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
-			client = resolver.acquireUnstableContentProviderClient(authority);
-		} else {
-			client = resolver.acquireContentProviderClient(authority);
-		}
-		if (client != null && !ProviderHook.class.isInstance(client)) {
-			provider = mirror.android.content.ContentProviderClient.mContentProvider.get(client);
-			ProviderHook.HookFetcher fetcher = ProviderHook.fetchHook(authority);
-			if (fetcher != null) {
-				ProviderHook hook = fetcher.fetch(false, info, provider);
-				if (hook != null) {
-					IInterface proxyProvider = ProviderHook.createProxy(provider, hook);
-					if (proxyProvider != null) {
-						mirror.android.content.ContentProviderClient.mContentProvider.set(client, provider);
-						provider = proxyProvider;
-					}
-				}
+		ContentProviderClient client = null;
+		try {
+			if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
+				client = resolver.acquireUnstableContentProviderClient(authority);
+			} else {
+				client = resolver.acquireContentProviderClient(authority);
 			}
+		} catch (Throwable e) {
+			e.printStackTrace();
+		}
+		if (client != null) {
+			provider = mirror.android.content.ContentProviderClient.mContentProvider.get(client);
 			client.release();
 		}
 		return provider != null ? provider.asBinder() : null;
@@ -335,16 +359,15 @@ public final class VClientImpl extends IVClient.Stub {
 		sendMessage(NEW_INTENT, data);
 	}
 
-
-	@Override
-	public boolean startActivityFromToken(IBinder token, Intent intent, int requestCode, Bundle options) {
-		return VActivityManager.get().startActivityFromToken(token, intent, requestCode, options);
-	}
-
 	@Override
 	public IBinder createProxyService(ComponentName component, IBinder binder) {
 		return ProxyServiceFactory.getProxyService(getCurrentApplication(), component, binder);
 	}
 
-
+	@Override
+	public String getDebugInfo() {
+		return "process : " + VirtualRuntime.getProcessName() + "\n" +
+				"initialPkg : " + VirtualRuntime.getInitialPackageName() + "\n" +
+				"vuid : " + vuid;
+	}
 }

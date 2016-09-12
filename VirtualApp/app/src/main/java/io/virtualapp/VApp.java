@@ -8,6 +8,7 @@ import android.content.pm.PackageManager;
 import com.lody.virtual.client.core.InstallStrategy;
 import com.lody.virtual.client.core.VirtualCore;
 import com.lody.virtual.client.service.ServiceManagerNative;
+import com.lody.virtual.client.stub.StubManifest;
 import com.lody.virtual.helper.proto.InstallResult;
 import com.lody.virtual.helper.utils.VLog;
 
@@ -46,6 +47,7 @@ public class VApp extends Application {
         super.attachBaseContext(base);
         try {
             ServiceManagerNative.SERVICE_CP_AUTH = BuildConfig.APPLICATION_ID + ".virtual.service.BinderProvider";
+            StubManifest.STUB_CP_AUTHORITY = BuildConfig.APPLICATION_ID +".virtual_stub_";
             VirtualCore.get().startup(base);
         } catch (Throwable e) {
             e.printStackTrace();

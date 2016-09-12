@@ -2,26 +2,25 @@ package mirror;
 
 import java.lang.reflect.Field;
 
-@SuppressWarnings("unchecked")
-public class FieldDef<T> {
+public class RefLong {
     private Field field;
 
-    public FieldDef(Class<?> cls, Field field) throws NoSuchFieldException {
+    public RefLong(Class cls, Field field) throws NoSuchFieldException {
         this.field = cls.getDeclaredField(field.getName());
         this.field.setAccessible(true);
     }
 
-    public T get(Object object) {
+    public long get(Object object) {
         try {
-            return (T) this.field.get(object);
+            return this.field.getLong(object);
         } catch (Exception e) {
-            return null;
+            return 0;
         }
     }
 
-    public void set(Object obj, T value) {
+    public void set(Object obj, long value) {
         try {
-            this.field.set(obj, value);
+            this.field.setLong(obj, value);
         } catch (Exception e) {
             //Ignore
         }

@@ -19,7 +19,6 @@ import com.lody.virtual.client.service.ServiceManagerNative;
 import com.lody.virtual.helper.compat.ActivityManagerCompat;
 import com.lody.virtual.helper.proto.AppTaskInfo;
 import com.lody.virtual.helper.proto.PendingIntentData;
-import com.lody.virtual.helper.proto.StubActivityRecord;
 import com.lody.virtual.helper.proto.VParceledListSlice;
 import com.lody.virtual.helper.utils.ComponentUtils;
 import com.lody.virtual.os.VUserHandle;
@@ -59,25 +58,25 @@ public class VActivityManager {
 		return mRemote;
 	}
 
-	public int startActivity(Intent intent, ActivityInfo info, IBinder resultTo, Bundle options, int requestCode) {
+	public int startActivity(Intent intent, ActivityInfo info, IBinder resultTo, Bundle options, String resultWho, int requestCode, int userId) {
 		try {
-			return getService().startActivity(intent, info, resultTo, options, requestCode, VUserHandle.myUserId());
+			return getService().startActivity(intent, info, resultTo, options, resultWho, requestCode, userId);
 		} catch (RemoteException e) {
 			return VirtualRuntime.crash(e);
 		}
 	}
 
 	public int startActivity(Intent intent, int userId) {
-		if (userId == -1) {
+		if (userId < 0) {
 			return ActivityManagerCompat.START_NOT_CURRENT_USER_ACTIVITY;
 		}
 		ActivityInfo info = VirtualCore.get().resolveActivityInfo(intent, userId);
 		if (info == null) {
 			return ActivityManagerCompat.START_INTENT_NOT_RESOLVED;
 		}
-		return startActivity(intent, info, null, null, userId);
-
+		return startActivity(intent, info, null, null, null, 0, userId);
 	}
+
 
 	public ActivityClientRecord onActivityCreate(ComponentName component, ComponentName caller, IBinder token, ActivityInfo info, Intent intent, String affinity, int taskId, int launchMode, int flags) {
 		ActivityClientRecord r = new ActivityClientRecord();
@@ -374,20 +373,6 @@ public class VActivityManager {
 		getService().removePendingIntent(binder);
 	}
 
-	public boolean startActivityFromToken(IBinder token, Intent intent, int requestCode, Bundle options) {
-		ActivityClientRecord r = getActivityRecord(token);
-		if (r != null && r.activity != null) {
-			intent.setExtrasClassLoader(StubActivityRecord.class.getClassLoader());
-			if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
-				r.activity.startActivityForResult(intent, requestCode, options);
-			} else {
-				r.activity.startActivityForResult(intent, requestCode);
-			}
-			return true;
-		}
-		return false;
-	}
-
 	public void finishActivity(IBinder token) {
 		ActivityClientRecord r = getActivityRecord(token);
 		if (r != null) {
@@ -427,10 +412,27 @@ public class VActivityManager {
 		}
 	}
 
+	public boolean isAppRunning(String packageName, int userId) {
+		try {
+			return getService().isAppRunning(packageName, userId);
+		} catch (RemoteException e) {
+			return VirtualRuntime.crash(e);
+		}
+	}
+
+	public int initProcess(String packageName, String processName, int userId) {
+		try {
+			return getService().initProcess(packageName, processName, userId);
+		} catch (RemoteException e) {
+			return VirtualRuntime.crash(e);
+		}
+	}
+
 	public void sendBroadcast(Intent intent, int userId) {
 		Intent newIntent = ComponentUtils.redirectBroadcastIntent(intent, userId);
 		if (newIntent != null) {
 			VirtualCore.get().getContext().sendBroadcast(newIntent);
 		}
 	}
+
 }

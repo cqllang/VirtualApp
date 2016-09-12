@@ -585,17 +585,16 @@ public class VPackageManagerService extends IPackageManager.Stub {
 	}
 
 	@Override
-	public VParceledListSlice<ProviderInfo> queryContentProviders(String processName, int uid, int flags) {
-		int userId = VUserHandle.getUserId(uid);
+	public VParceledListSlice<ProviderInfo> queryContentProviders(String processName, int vuid, int flags) {
+		int userId = VUserHandle.getUserId(vuid);
 		checkUserId(userId);
 		ArrayList<ProviderInfo> finalList = new ArrayList<>(3);
 		// reader
 		synchronized (mPackages) {
 			for (PackageParser.Provider p : mProvidersByComponent.values()) {
-				if (p.info.processName.equals(processName)) {
+				AppSetting setting = (AppSetting) p.owner.mExtras;
+				if (processName == null || setting.appId == VUserHandle.getAppId(vuid) && p.info.processName.equals(processName)) {
 					ProviderInfo providerInfo = PackageParserCompat.generateProviderInfo(p, flags);
-					PackageParser.Package pkg = mPackages.get(providerInfo.packageName);
-					AppSetting setting = (AppSetting) pkg.mExtras;
 					ComponentFixer.fixApplicationInfo(setting, providerInfo.applicationInfo, userId);
 					finalList.add(providerInfo);
 				}

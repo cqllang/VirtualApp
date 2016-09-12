@@ -16,16 +16,11 @@ public abstract class Hook {
 
 	private boolean enable = true;
 
-
-	/**
-	 * @return Hook的方法名
-	 */
 	public abstract String getName();
 
 	public boolean beforeCall(Object who, Method method, Object... args) {
 		return true;
 	}
-
 
 	public Object call(Object who, Method method, Object... args) throws Throwable {
 		return method.invoke(who, args);
@@ -72,12 +67,13 @@ public abstract class Hook {
 		return VirtualCore.get().isMainProcess();
 	}
 
-	protected final int getVUid() {
-		return VClientImpl.getClient().getVUid();
+
+	protected final int getBaseVUid() {
+		return VClientImpl.getClient().getBaseVUid();
 	}
 
-	protected final boolean isSystemProcess() {
-		return isMainProcess() || isServiceProcess();
+	protected final int getRealUid() {
+		return VirtualCore.get().myUid();
 	}
 
 

@@ -14,6 +14,7 @@ import com.lody.virtual.client.hook.patchs.appwidget.AppWidgetManagerPatch;
 import com.lody.virtual.client.hook.patchs.audio.AudioManagerPatch;
 import com.lody.virtual.client.hook.patchs.backup.BackupManagerPatch;
 import com.lody.virtual.client.hook.patchs.clipboard.ClipBoardPatch;
+import com.lody.virtual.client.hook.patchs.connectivity.ConnectivityPatch;
 import com.lody.virtual.client.hook.patchs.content.ContentServicePatch;
 import com.lody.virtual.client.hook.patchs.display.DisplayPatch;
 import com.lody.virtual.client.hook.patchs.dropbox.DropBoxManagerPatch;
@@ -22,6 +23,7 @@ import com.lody.virtual.client.hook.patchs.imms.MmsPatch;
 import com.lody.virtual.client.hook.patchs.input.InputMethodManagerPatch;
 import com.lody.virtual.client.hook.patchs.isub.ISubPatch;
 import com.lody.virtual.client.hook.patchs.job.JobPatch;
+import com.lody.virtual.client.hook.patchs.libcore.LibCorePatch;
 import com.lody.virtual.client.hook.patchs.location.LocationManagerPatch;
 import com.lody.virtual.client.hook.patchs.media.router.MediaRouterServicePatch;
 import com.lody.virtual.client.hook.patchs.media.session.SessionManagerPatch;
@@ -118,6 +120,7 @@ public final class PatchManager {
 			return;
 		}
 		if (VirtualCore.get().isVAppProcess()) {
+			addPatch(new LibCorePatch());
 			addPatch(new ActivityManagerPatch());
 			addPatch(new PackageManagerPatch());
 			// ## End
@@ -168,7 +171,7 @@ public final class PatchManager {
 			if (Build.VERSION.SDK_INT >= LOLLIPOP_MR1) {
 				addPatch(new GraphicsStatsPatch());
 			}
-
+            addPatch(new ConnectivityPatch());
 		}
 	}
 

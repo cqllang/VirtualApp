@@ -2,25 +2,25 @@ package mirror;
 
 import java.lang.reflect.Field;
 
-public class StaticIntFieldDef {
+public class RefInt {
     private Field field;
 
-    public StaticIntFieldDef(Class<?> cls, Field field) throws NoSuchFieldException {
+    public RefInt(Class cls, Field field) throws NoSuchFieldException {
         this.field = cls.getDeclaredField(field.getName());
         this.field.setAccessible(true);
     }
 
-    public int get() {
+    public int get(Object object) {
         try {
-            return this.field.getInt(null);
+            return this.field.getInt(object);
         } catch (Exception e) {
             return 0;
         }
     }
 
-    public void set(int value) {
+    public void set(Object obj, int intValue) {
         try {
-            this.field.setInt(null, value);
+            this.field.setInt(obj, intValue);
         } catch (Exception e) {
             //Ignore
         }

@@ -2,25 +2,25 @@ package mirror;
 
 import java.lang.reflect.Field;
 
-public class LongFieldDef {
+public class RefStaticInt {
     private Field field;
 
-    public LongFieldDef(Class cls, Field field) throws NoSuchFieldException {
+    public RefStaticInt(Class<?> cls, Field field) throws NoSuchFieldException {
         this.field = cls.getDeclaredField(field.getName());
         this.field.setAccessible(true);
     }
 
-    public long get(Object object) {
+    public int get() {
         try {
-            return this.field.getLong(object);
+            return this.field.getInt(null);
         } catch (Exception e) {
             return 0;
         }
     }
 
-    public void set(Object obj, long value) {
+    public void set(int value) {
         try {
-            this.field.setLong(obj, value);
+            this.field.setInt(null, value);
         } catch (Exception e) {
             //Ignore
         }
