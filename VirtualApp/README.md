@@ -32,3 +32,21 @@ VActivityManager.get().startActivity(intent, userId)
 - 删除
 VirtualCore.get().uninstallApp(app.packageName);
 
+
+
+```
+ServiceManagerNative.getService(ServiceManagerNative.APP_MANAGER)
+```
+## Service & Impl
+- VirtualApp/lib/src/main/aidl/com/lody/virtual/service/ # com.lody.virtual.service
+IAccountManager.aidl
+IActivityManager.aidl
+IAppManager.aidl
+IPackageManager.aidl
+IUserManager.aidl
+- VirtualApp/lib/src/main/java/com/lody/virtual/service/pm/  #com.lody.virtual.service.pm
+VAppManagerService.java
+VUserManagerService.java
+VPackageManagerService.java
+../am
+VActivityManagerService.java
