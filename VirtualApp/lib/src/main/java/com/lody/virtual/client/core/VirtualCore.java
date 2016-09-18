@@ -171,7 +171,7 @@ public final class VirtualCore {
 			synchronized (this) {
 				if (mService == null) {
 					mService = IAppManager.Stub
-							.asInterface(ServiceManagerNative.getService(ServiceManagerNative.APP_MANAGER));
+							.asInterface(ServiceManagerNative.getService(ServiceManagerNative.APP));
 				}
 			}
 		}
@@ -376,8 +376,8 @@ public final class VirtualCore {
 		return serviceInfo;
 	}
 
-	public void killApp(String pkg) {
-		VActivityManager.get().killAppByPkg(pkg);
+	public void killApp(String pkg, int userId) {
+		VActivityManager.get().killAppByPkg(pkg, userId);
 	}
 
 	public void killAllApps() {

@@ -52,8 +52,12 @@ public class VActivityManager {
 
 	public IActivityManager getService() {
 		if (mRemote == null) {
-			mRemote = IActivityManager.Stub
-					.asInterface(ServiceManagerNative.getService(ServiceManagerNative.ACTIVITY_MANAGER));
+			synchronized (VActivityManager.class) {
+				if (mRemote == null) {
+					mRemote = IActivityManager.Stub
+							.asInterface(ServiceManagerNative.getService(ServiceManagerNative.ACTIVITY));
+				}
+			}
 		}
 		return mRemote;
 	}
@@ -138,10 +142,18 @@ public class VActivityManager {
 		}
 	}
 
-
-	public ComponentName startService(IInterface caller, Intent service, String resolvedType) {
+	public ComponentName getActivityForToken(IBinder token) {
 		try {
-			return getService().startService(caller != null ? caller.asBinder() : null, service, resolvedType, VUserHandle.myUserId());
+			return getService().getActivityClassForToken(VUserHandle.myUserId(), token);
+		} catch (RemoteException e) {
+			return VirtualRuntime.crash(e);
+		}
+	}
+
+
+	public ComponentName startService(IInterface caller, Intent service, String resolvedType, int userId) {
+		try {
+			return getService().startService(caller != null ? caller.asBinder() : null, service, resolvedType, userId);
 		} catch (RemoteException e) {
 			return VirtualRuntime.crash(e);
 		}
@@ -292,9 +304,9 @@ public class VActivityManager {
 		}
 	}
 
-	public void killAppByPkg(String pkg) {
+	public void killAppByPkg(String pkg, int userId) {
 		try {
-			getService().killAppByPkg(pkg, VUserHandle.myUserId());
+			getService().killAppByPkg(pkg, userId);
 		} catch (RemoteException e) {
 			e.printStackTrace();
 		}
@@ -435,4 +447,11 @@ public class VActivityManager {
 		}
 	}
 
+	public boolean isVAServiceToken(IBinder token) {
+		try {
+			return getService().isVAServiceToken(token);
+		} catch (RemoteException e) {
+			return VirtualRuntime.crash(e);
+		}
+	}
 }

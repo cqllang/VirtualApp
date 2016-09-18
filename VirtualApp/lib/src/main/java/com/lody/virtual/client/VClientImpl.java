@@ -32,13 +32,12 @@ import com.lody.virtual.client.local.VPackageManager;
 import com.lody.virtual.helper.utils.Reflect;
 import com.lody.virtual.helper.utils.VLog;
 import com.lody.virtual.os.VUserHandle;
-import com.lody.virtual.service.secondary.FakeIdentityBinder;
+import com.lody.virtual.server.secondary.FakeIdentityBinder;
 
 import java.io.File;
 import java.util.Collections;
 import java.util.List;
 
-import dalvik.system.PathClassLoader;
 import mirror.android.app.ActivityThread;
 import mirror.android.app.ContextImpl;
 import mirror.android.app.ContextImplICS;
@@ -58,6 +57,8 @@ public final class VClientImpl extends IVClient.Stub {
 	private static final int NEW_INTENT = 11;
 
 	private static final String TAG = VClientImpl.class.getSimpleName();
+
+	private ConditionVariable mTempLock;
 
 	@SuppressLint("StaticFieldLeak")
 	private static final VClientImpl gClient = new VClientImpl();
@@ -176,7 +177,7 @@ public final class VClientImpl extends IVClient.Stub {
 
 	public void bindApplication(final String packageName, final String processName) {
 		if (Looper.getMainLooper() == Looper.myLooper()) {
-			bindApplicationNoCheck(packageName, processName, null);
+			bindApplicationNoCheck(packageName, processName, new ConditionVariable());
 		} else {
 			final ConditionVariable lock = new ConditionVariable();
 			VirtualRuntime.getUIHandler().post(new Runnable() {
@@ -191,6 +192,11 @@ public final class VClientImpl extends IVClient.Stub {
 	}
 
 	private void bindApplicationNoCheck(String packageName, String processName, ConditionVariable lock) {
+		mTempLock = lock;
+		ActivityThread.mInitialApplication.set(
+				VirtualCore.mainThread(),
+				null
+		);
 		AppBindData data = new AppBindData();
 		data.appInfo = VPackageManager.get().getApplicationInfo(packageName, 0, getUserId(vuid));
 		data.processName = processName;
@@ -207,7 +213,7 @@ public final class VClientImpl extends IVClient.Stub {
 		ThreadGroup systemGroup = new ThreadGroup("va-system") {
 			@Override
 			public void uncaughtException(Thread t, Throwable e) {
-				VLog.e(TAG, e);
+				VLog.e(TAG + " : " + VirtualRuntime.getProcessName(), e);
 				Process.killProcess(Process.myPid());
 			}
 		};
@@ -247,8 +253,9 @@ public final class VClientImpl extends IVClient.Stub {
 			}
 
 		}
+		Object boundApp = fixBoundApp(mBoundApplication);
 		mBoundApplication.info = ContextImpl.mPackageInfo.get(context);
-		fixBoundApp(mBoundApplication);
+		mirror.android.app.ActivityThread.AppBindData.info.set(boundApp, data.info);
 		VMRuntime.setTargetSdkVersion.call(VMRuntime.getRuntime.call(), data.appInfo.targetSdkVersion);
 
 		Application app = LoadedApk.makeApplication.call(data.info, false, null);
@@ -261,6 +268,7 @@ public final class VClientImpl extends IVClient.Stub {
 		}
 		if (lock != null) {
 			lock.open();
+			mTempLock = null;
 		}
 		try {
 			mInstrumentation.callApplicationOnCreate(app);
@@ -284,23 +292,13 @@ public final class VClientImpl extends IVClient.Stub {
 		}
 	}
 
-	private void fixBoundApp(AppBindData data) {
+	private Object fixBoundApp(AppBindData data) {
 		Object thread = VirtualCore.mainThread();
 		Object boundApp = mirror.android.app.ActivityThread.mBoundApplication.get(thread);
 		mirror.android.app.ActivityThread.AppBindData.appInfo.set(boundApp, data.appInfo);
 		mirror.android.app.ActivityThread.AppBindData.processName.set(boundApp, data.processName);
-		mirror.android.app.ActivityThread.AppBindData.info.set(boundApp, data.info);
 		mirror.android.app.ActivityThread.AppBindData.instrumentationName.set(boundApp, new ComponentName(data.appInfo.packageName, Instrumentation.class.getName()));
-		// T_T   T_T   T_T   T_T   T_T   T_T   T_T   T_T
-		// Gms use the {com.android.location.provider.jar}
-		// T_T   T_T   T_T   T_T   T_T   T_T   T_T   T_T
-		if (data.processName.equals("com.google.android.gms.persistent")) {
-			File file = new File("/system/framework/com.android.location.provider.jar");
-			if (file.exists()) {
-				PathClassLoader parent = new PathClassLoader(file.getPath(), ClassLoader.getSystemClassLoader().getParent());
-				Reflect.on(mBoundApplication.info).set("mBaseClassLoader", parent);
-			}
-		}
+		return boundApp;
 	}
 
 	private void installContentProviders(Context app, List<ProviderInfo> providers) {
@@ -320,6 +318,9 @@ public final class VClientImpl extends IVClient.Stub {
 
 	@Override
 	public IBinder acquireProviderClient(ProviderInfo info) {
+		if (mTempLock != null) {
+			mTempLock.block();
+		}
 		if (!VClientImpl.getClient().isBound()) {
 			VClientImpl.getClient().bindApplication(info.packageName, info.processName);
 		}
