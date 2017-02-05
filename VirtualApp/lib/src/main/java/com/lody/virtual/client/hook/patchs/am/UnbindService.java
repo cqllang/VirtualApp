@@ -4,7 +4,7 @@ import android.app.IServiceConnection;
 
 import com.lody.virtual.client.hook.base.Hook;
 import com.lody.virtual.client.hook.secondary.ServiceConnectionDelegate;
-import com.lody.virtual.client.local.VActivityManager;
+import com.lody.virtual.client.ipc.VActivityManager;
 
 import java.lang.reflect.Method;
 
@@ -27,7 +27,7 @@ import java.lang.reflect.Method;
 		if (delegate == null) {
 			return method.invoke(who, args);
 		}
-		return VActivityManager.get().unbindService(conn);
+		return VActivityManager.get().unbindService(delegate);
 	}
 
 	@Override

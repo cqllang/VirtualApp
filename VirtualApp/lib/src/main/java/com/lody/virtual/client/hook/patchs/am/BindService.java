@@ -11,7 +11,7 @@ import android.os.IInterface;
 import com.lody.virtual.client.core.VirtualCore;
 import com.lody.virtual.client.hook.base.Hook;
 import com.lody.virtual.client.hook.secondary.ServiceConnectionDelegate;
-import com.lody.virtual.client.local.VActivityManager;
+import com.lody.virtual.client.ipc.VActivityManager;
 import com.lody.virtual.os.VUserHandle;
 
 import java.lang.reflect.Method;
@@ -37,6 +37,9 @@ import java.lang.reflect.Method;
 		int userId = VUserHandle.myUserId();
 		if (isServerProcess()) {
 			userId = service.getIntExtra("_VA_|_user_id_", VUserHandle.USER_NULL);
+		}
+		if (userId == VUserHandle.USER_NULL) {
+			return method.invoke(who, args);
 		}
 		ServiceInfo serviceInfo = VirtualCore.get().resolveServiceInfo(service, userId);
 		if (serviceInfo != null) {

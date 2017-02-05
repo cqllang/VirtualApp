@@ -7,7 +7,7 @@ import android.os.RemoteException;
 
 import com.lody.virtual.client.VClientImpl;
 import com.lody.virtual.helper.utils.collection.ArrayMap;
-import com.lody.virtual.service.IBinderDelegateService;
+import com.lody.virtual.server.IBinderDelegateService;
 
 /**
  * @author Lody
@@ -16,8 +16,16 @@ import com.lody.virtual.service.IBinderDelegateService;
 public class ServiceConnectionDelegate extends IServiceConnection.Stub {
 
     private final static ArrayMap<IBinder, ServiceConnectionDelegate> DELEGATE_MAP = new ArrayMap<>();
+    private IServiceConnection mConn;
+
+    private ServiceConnectionDelegate(IServiceConnection mConn) {
+        this.mConn = mConn;
+    }
 
     public static ServiceConnectionDelegate getDelegate(IServiceConnection conn) {
+        if(conn instanceof ServiceConnectionDelegate){
+            return (ServiceConnectionDelegate)conn;
+        }
         IBinder binder = conn.asBinder();
         ServiceConnectionDelegate delegate = DELEGATE_MAP.get(binder);
         if (delegate == null) {
@@ -31,24 +39,16 @@ public class ServiceConnectionDelegate extends IServiceConnection.Stub {
         return DELEGATE_MAP.remove(conn.asBinder());
     }
 
-    private IServiceConnection mConn;
-
-    private ServiceConnectionDelegate(IServiceConnection mConn) {
-        this.mConn = mConn;
-    }
-
     @Override
     public void connected(ComponentName name, IBinder service) throws RemoteException {
         IBinderDelegateService delegateService = IBinderDelegateService.Stub.asInterface(service);
         if (delegateService != null) {
             name = delegateService.getComponent();
             service = delegateService.getService();
-            IBinder proxy = ProxyServiceFactory.getProxyService(VClientImpl.getClient().getCurrentApplication(), name, service);
+            IBinder proxy = ProxyServiceFactory.getProxyService(VClientImpl.get().getCurrentApplication(), name, service);
             if (proxy != null) {
                 service = proxy;
             }
-        } else {
-            throw new RuntimeException("Boom");
         }
         mConn.connected(name, service);
     }

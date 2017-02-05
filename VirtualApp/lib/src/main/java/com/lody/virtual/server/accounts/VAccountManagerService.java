@@ -29,12 +29,13 @@ import android.util.SparseArray;
 import android.util.Xml;
 
 import com.lody.virtual.client.core.VirtualCore;
-import com.lody.virtual.client.local.VActivityManager;
+import com.lody.virtual.client.ipc.VActivityManager;
 import com.lody.virtual.helper.compat.AccountManagerCompat;
 import com.lody.virtual.helper.utils.VLog;
+import com.lody.virtual.os.VBinder;
 import com.lody.virtual.os.VEnvironment;
-import com.lody.virtual.service.IAccountManager;
 import com.lody.virtual.server.pm.VPackageManagerService;
+import com.lody.virtual.server.IAccountManager;
 
 import org.xmlpull.v1.XmlPullParser;
 
@@ -231,7 +232,7 @@ public class VAccountManagerService extends IAccountManager.Stub {
         final String callerPkg = loginOptions.getString(AccountManagerCompat.KEY_ANDROID_PACKAGE_NAME);
 		final boolean customTokens = info.desc.customTokens;
 
-        loginOptions.putInt(AccountManager.KEY_CALLER_UID, Binder.getCallingUid());
+        loginOptions.putInt(AccountManager.KEY_CALLER_UID, VBinder.getCallingUid());
         loginOptions.putInt(AccountManager.KEY_CALLER_PID, Binder.getCallingPid());
 		if (notifyOnAuthFailure) {
 			loginOptions.putBoolean(AccountManagerCompat.KEY_NOTIFY_ON_FAILURE, true);
@@ -794,7 +795,7 @@ public class VAccountManagerService extends IAccountManager.Stub {
 				return newAccount;
 			}
 		}
-		return null;
+		return accountToRename;
 	}
 
 	@Override
@@ -894,7 +895,7 @@ public class VAccountManagerService extends IAccountManager.Stub {
 	 * Serializing all accounts
 	 */
 	private void serializeAllAccounts() {
-		File accountFile = VEnvironment.getAccountFile();
+		File accountFile = VEnvironment.getAccountConfigFile();
 		Parcel dest = Parcel.obtain();
 		try {
 			dest.writeInt(1);
@@ -923,7 +924,7 @@ public class VAccountManagerService extends IAccountManager.Stub {
 	 * Read all accounts from file.
 	 */
 	private void deserializeAllAccounts() {
-		File accountFile = VEnvironment.getAccountFile();
+		File accountFile = VEnvironment.getAccountConfigFile();
 		refreshAuthenticatorCache(null);
 		if (accountFile.exists()) {
 			accountsByUserId.clear();

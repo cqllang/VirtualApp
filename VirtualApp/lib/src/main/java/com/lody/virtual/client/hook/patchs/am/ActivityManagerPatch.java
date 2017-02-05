@@ -16,19 +16,22 @@ import com.lody.virtual.client.hook.base.ReplaceCallingPkgHook;
 import com.lody.virtual.client.hook.base.ReplaceLastUidHook;
 import com.lody.virtual.client.hook.base.ResultStaticHook;
 import com.lody.virtual.client.hook.base.StaticHook;
-import com.lody.virtual.client.local.VActivityManager;
+import com.lody.virtual.client.ipc.VActivityManager;
 import com.lody.virtual.helper.proto.AppTaskInfo;
 
 import java.lang.reflect.Method;
+import java.util.Iterator;
 import java.util.List;
 
 import mirror.android.app.ActivityManagerNative;
 import mirror.android.app.IActivityManager;
+import mirror.android.content.pm.ParceledListSlice;
 import mirror.android.os.ServiceManager;
 import mirror.android.util.Singleton;
 
 /**
  * @author Lody
+ *
  * @see IActivityManager
  * @see android.app.ActivityManager
  */
@@ -61,15 +64,8 @@ import mirror.android.util.Singleton;
 
 public class ActivityManagerPatch extends PatchDelegate<HookDelegate<IInterface>> {
 
-
-	@Override
-	protected HookDelegate<IInterface> createHookDelegate() {
-		return new HookDelegate<IInterface>() {
-			@Override
-			protected IInterface createInterface() {
-				return ActivityManagerNative.getDefault.call();
-			}
-		};
+	public ActivityManagerPatch() {
+		super(new HookDelegate<IInterface>(ActivityManagerNative.getDefault.call()));
 	}
 
 	@Override
@@ -82,12 +78,7 @@ public class ActivityManagerPatch extends PatchDelegate<HookDelegate<IInterface>
 			Singleton.mInstance.set(gDefault, getHookDelegate().getProxyInterface());
 		}
 
-		HookBinderDelegate hookAMBinder = new HookBinderDelegate() {
-			@Override
-			protected IInterface createInterface() {
-				return getHookDelegate().getBaseInterface();
-			}
-		};
+		HookBinderDelegate hookAMBinder = new HookBinderDelegate(getHookDelegate().getBaseInterface());
 		hookAMBinder.copyHooks(getHookDelegate());
 		ServiceManager.sCache.get().put(Context.ACTIVITY_SERVICE, hookAMBinder);
 	}
@@ -110,19 +101,24 @@ public class ActivityManagerPatch extends PatchDelegate<HookDelegate<IInterface>
 				@Override
 				public Object call(Object who, Method method, Object... args) throws Throwable {
 					//noinspection unchecked
-					List<ActivityManager.RecentTaskInfo> infos = (List<ActivityManager.RecentTaskInfo>) method.invoke(who, args);
+					Object _infos = method.invoke(who, args);
+					List<ActivityManager.RecentTaskInfo> infos =
+							_infos instanceof ParceledListSlice
+									? ParceledListSlice.getList.call(_infos)
+									: (List)_infos;
 					for (ActivityManager.RecentTaskInfo info : infos) {
 						AppTaskInfo taskInfo = VActivityManager.get().getTaskInfo(info.id);
-						if (taskInfo != null) {
-							if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-								info.baseActivity = taskInfo.baseActivity;
-								info.topActivity = taskInfo.topActivity;
-							}
-							info.origActivity = taskInfo.baseActivity;
-							info.baseIntent = taskInfo.baseIntent;
+						if (taskInfo == null) {
+							continue;
 						}
+						if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+							info.baseActivity = taskInfo.baseActivity;
+							info.topActivity = taskInfo.topActivity;
+						}
+						info.origActivity = taskInfo.baseActivity;
+						info.baseIntent = taskInfo.baseIntent;
 					}
-					return super.call(who, method, args);
+					return _infos;
 				}
 			});
 		}

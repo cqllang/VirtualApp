@@ -9,6 +9,7 @@ import android.content.pm.PackageInfo;
 import android.os.Build;
 
 import com.lody.virtual.client.core.VirtualCore;
+import com.lody.virtual.client.env.SpecialComponentList;
 import com.lody.virtual.helper.compat.ObjectsCompat;
 
 import static android.content.pm.ActivityInfo.LAUNCH_SINGLE_INSTANCE;
@@ -104,37 +105,32 @@ public class ComponentUtils {
 	}
 
 	public static Intent redirectBroadcastIntent(Intent intent, int userId) {
+        Intent newIntent = intent.cloneFilter();
+		newIntent.setComponent(null);
+		newIntent.setPackage(null);
 		ComponentName component = intent.getComponent();
 		String pkg = intent.getPackage();
 		if (component != null) {
-			if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.ICE_CREAM_SANDWICH_MR1) {
-                if (intent.getSelector() != null) {
-                    intent.setPackage(component.getPackageName());
-                }
-            }
-			Intent newIntent = intent.cloneFilter();
-			newIntent.setComponent(null);
-			newIntent.setPackage(null);
 			newIntent.putExtra("_VA_|_user_id_", userId);
 			newIntent.setAction(String.format("_VA_%s_%s", component.getPackageName(), component.getClassName()));
 			newIntent.putExtra("_VA_|_component_", component);
 			newIntent.putExtra("_VA_|_intent_", new Intent(intent));
-			return newIntent;
 		} else if (pkg != null) {
-			if (VirtualCore.get().isAppInstalled(pkg)) {
-				Intent newIntent = intent.cloneFilter();
-				newIntent.setPackage(null);
-				newIntent.putExtra("_VA_|_user_id_", userId);
-				newIntent.putExtra("_VA_|_creator_", pkg);
-				newIntent.putExtra("_VA_|_intent_", new Intent(intent));
-				return newIntent;
-			}
+			newIntent.putExtra("_VA_|_user_id_", userId);
+			newIntent.putExtra("_VA_|_creator_", pkg);
+			newIntent.putExtra("_VA_|_intent_", new Intent(intent));
+            String protectedAction = SpecialComponentList.protectAction(intent.getAction());
+            if (protectedAction != null) {
+                newIntent.setAction(protectedAction);
+            }
 		} else {
-			Intent newIntent = intent.cloneFilter();
 			newIntent.putExtra("_VA_|_user_id_", userId);
 			newIntent.putExtra("_VA_|_intent_", new Intent(intent));
-			return newIntent;
+            String protectedAction = SpecialComponentList.protectAction(intent.getAction());
+            if (protectedAction != null) {
+                newIntent.setAction(protectedAction);
+            }
 		}
-		return null;
+        return newIntent;
 	}
 }

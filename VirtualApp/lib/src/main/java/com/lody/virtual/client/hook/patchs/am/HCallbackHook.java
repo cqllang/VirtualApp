@@ -11,7 +11,7 @@ import android.os.Message;
 import com.lody.virtual.client.VClientImpl;
 import com.lody.virtual.client.core.VirtualCore;
 import com.lody.virtual.client.interfaces.Injectable;
-import com.lody.virtual.client.local.VActivityManager;
+import com.lody.virtual.client.ipc.VActivityManager;
 import com.lody.virtual.helper.proto.StubActivityRecord;
 import com.lody.virtual.helper.utils.ComponentUtils;
 import com.lody.virtual.helper.utils.Reflect;
@@ -63,19 +63,25 @@ public class HCallbackHook implements Handler.Callback, Injectable {
 	@Override
 	public boolean handleMessage(Message msg) {
 		if (!mCalling) {
-			mCalling = false;
+			mCalling = true;
 			try {
 				if (LAUNCH_ACTIVITY == msg.what) {
 					if (!handleLaunchActivity(msg)) {
 						return true;
 					}
 				} else if (CREATE_SERVICE == msg.what) {
-					if (!VClientImpl.getClient().isBound()) {
+					if (!VClientImpl.get().isBound()) {
 						ServiceInfo info = Reflect.on(msg.obj).get("info");
-						VClientImpl.getClient().bindApplication(info.packageName, info.processName);
+						VClientImpl.get().bindApplication(info.packageName, info.processName);
 					}
 				}
-				return otherCallback != null && otherCallback.handleMessage(msg);
+				if (otherCallback != null) {
+					boolean desired = otherCallback.handleMessage(msg);
+					mCalling = false;
+					return desired;
+				} else {
+					mCalling = false;
+				}
 			} finally {
 				mCalling = false;
 			}
@@ -94,13 +100,13 @@ public class HCallbackHook implements Handler.Callback, Injectable {
 		ComponentName caller = saveInstance.caller;
 		IBinder token = ActivityThread.ActivityClientRecord.token.get(r);
 		ActivityInfo info = saveInstance.info;
-		if (VClientImpl.getClient().getToken() == null) {
+		if (VClientImpl.get().getToken() == null) {
 			VActivityManager.get().processRestarted(info.packageName, info.processName, saveInstance.userId);
 			getH().sendMessageAtFrontOfQueue(Message.obtain(msg));
 			return false;
 		}
-		if (!VClientImpl.getClient().isBound()) {
-			VClientImpl.getClient().bindApplication(info.packageName, info.processName);
+		if (!VClientImpl.get().isBound()) {
+			VClientImpl.get().bindApplication(info.packageName, info.processName);
 			getH().sendMessageAtFrontOfQueue(Message.obtain(msg));
 			return false;
 		}
@@ -110,7 +116,7 @@ public class HCallbackHook implements Handler.Callback, Injectable {
 				false
 		);
 		VActivityManager.get().onActivityCreate(ComponentUtils.toComponentName(info), caller, token, info, intent, ComponentUtils.getTaskAffinity(info), taskId, info.launchMode, info.flags);
-		ClassLoader appClassLoader = VClientImpl.getClient().getClassLoader(info.applicationInfo);
+		ClassLoader appClassLoader = VClientImpl.get().getClassLoader(info.applicationInfo);
 		intent.setExtrasClassLoader(appClassLoader);
 		ActivityThread.ActivityClientRecord.intent.set(r, intent);
 		ActivityThread.ActivityClientRecord.activityInfo.set(r, info);

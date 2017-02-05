@@ -6,7 +6,6 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
-import android.content.pm.UserInfo;
 import android.graphics.Color;
 import android.net.Uri;
 import android.os.Bundle;
@@ -18,6 +17,7 @@ import com.lody.virtual.client.core.VirtualCore;
 import com.lody.virtual.client.env.Constants;
 import com.lody.virtual.helper.proto.AppSetting;
 import com.lody.virtual.os.VUserHandle;
+import com.lody.virtual.os.VUserInfo;
 import com.lody.virtual.os.VUserManager;
 import com.melnykov.fab.FloatingActionButton;
 
@@ -50,7 +50,7 @@ public class HomeActivity extends VActivity implements HomeContract.HomeView {
 	private FloatingActionButton mCrashFab;
 	private ExplosionField mExplosionField;
 	private LaunchpadAdapter mAdapter;
-  private InstallerReceiver installerReceiver = new InstallerReceiver();
+  private InstallerReceiver mInstallerReceiver = new InstallerReceiver();
 
 	public static void goHome(Context context) {
 		if (context == null)
@@ -61,14 +61,18 @@ public class HomeActivity extends VActivity implements HomeContract.HomeView {
 		context.startActivity(intent);
 	}
 
+    private void bindViews() {
+        mLoadingBar = (ProgressBar) findViewById(R.id.pb_loading_app);
+        mPagerView = (PagerView) findViewById(R.id.home_launcher);
+        mAppFab = (FloatingActionButton) findViewById(R.id.home_fab);
+        mCrashFab = (FloatingActionButton) findViewById(R.id.home_del);
+    }
+
 	@Override
 	protected void onCreate(@Nullable Bundle savedInstanceState) {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_home);
-		mLoadingBar = (ProgressBar) findViewById(R.id.pb_loading_app);
-		mPagerView = (PagerView) findViewById(R.id.home_launcher);
-		mAppFab = (FloatingActionButton) findViewById(R.id.home_fab);
-		mCrashFab = (FloatingActionButton) findViewById(R.id.home_del);
+		bindViews();
 		mAdapter = new LaunchpadAdapter(this);
 		mPagerView.setAdapter(mAdapter);
 		new HomePresenterImpl(this, this);
@@ -84,14 +88,17 @@ public class HomeActivity extends VActivity implements HomeContract.HomeView {
 			mPresenter.deleteApp(model);
 		});
 		mPagerView.setOnItemClickListener((item, pos) -> {
-
-			new AlertDialog.Builder(this)
-					.setTitle("Choose an User")
-					.setItems(getUsers(), (dialog, userId)
-							-> mPresenter.launchApp((AppModel) item, userId))
-					.setNegativeButton(android.R.string.cancel, null)
-					.show();
-
+			String[] users = getUsers();
+			if (users.length == 1) {
+				mPresenter.launchApp((AppModel) item, 0);
+			} else {
+				new AlertDialog.Builder(this)
+						.setTitle("Choose an User")
+						.setItems(users, (dialog, userId)
+								-> mPresenter.launchApp((AppModel) item, userId))
+						.setNegativeButton(android.R.string.cancel, null)
+						.show();
+			}
 		});
 		findViewById(R.id.user_icon).setOnClickListener(v -> {
 		//			startActivity(new Intent(this, UserListActivity.class));
@@ -103,7 +110,6 @@ public class HomeActivity extends VActivity implements HomeContract.HomeView {
 			mAppFab.getLocationInWindow(location);
 			mPagerView.setBottomLine(location[1]);
 		});
-
 		registerInstallerReceiver();
 	}
 	
@@ -116,17 +122,18 @@ public class HomeActivity extends VActivity implements HomeContract.HomeView {
         startActivity(intent);
     }
 
-	public void registerInstallerReceiver() {
+    public void registerInstallerReceiver() {
 		IntentFilter filter = new IntentFilter();
 		filter.addAction(Constants.ACTION_PACKAGE_ADDED);
 		filter.addAction(Constants.ACTION_PACKAGE_REMOVED);
 		filter.addDataScheme("package");
-		registerReceiver(installerReceiver, filter);
+		registerReceiver(mInstallerReceiver, filter);
 	}
 
 	public void unregisterInstallerReceiver() {
-		unregisterReceiver(installerReceiver);
+		unregisterReceiver(mInstallerReceiver);
 	}
+
 
 	@Override
 	protected void onResume() {
@@ -186,10 +193,12 @@ public class HomeActivity extends VActivity implements HomeContract.HomeView {
 		ProgressDialog.show(this, "Please wait", "Opening the app...");
 	}
 
+
 	@Override
 	protected void onPause() {
 		super.onPause();
 	}
+
 
 	@Override
 	public void refreshPagerView() {
@@ -247,9 +256,9 @@ public class HomeActivity extends VActivity implements HomeContract.HomeView {
 	}
 
 	public String[] getUsers() {
-		List<UserInfo> userList = VUserManager.get().getUsers(false);
+		List<VUserInfo> userList = VUserManager.get().getUsers(false);
 		List<String> users = new ArrayList<>(userList.size());
-		for (UserInfo info : userList) {
+		for (VUserInfo info : userList) {
 			users.add(info.name);
 		}
 		return users.toArray(new String[users.size()]);
@@ -259,10 +268,9 @@ public class HomeActivity extends VActivity implements HomeContract.HomeView {
 
 		@Override
 		public void onReceive(Context context, Intent intent) {
-			if (HomeActivity.this.mPresenter == null)
-				return;
-
-			HomeActivity.this.mPresenter.dataChanged();
+			if (mPresenter != null) {
+				mPresenter.dataChanged();
+			}
 		}
 	}
 }
