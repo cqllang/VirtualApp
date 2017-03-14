@@ -1,5 +1,6 @@
 package com.lody.virtual.client.env;
 
+import android.app.PendingIntent;
 import android.content.Intent;
 
 import com.lody.virtual.client.stub.ShortcutHandleActivity;
@@ -11,14 +12,6 @@ import com.lody.virtual.client.stub.ShortcutHandleActivity;
 public class Constants {
 
 	public static final String EXTRA_USER_HANDLE = "android.intent.extra.user_handle";
-	public static String META_KEY_IDENTITY = "X-Identity";
-
-	public static String META_VALUE_STUB = "Stub-User";
-
-	/**
-	 * Server process name of VA
-	 */
-	public static String SERVER_PROCESS_NAME = ":x";
 	/**
 	 * Install shortcut action
 	 */
@@ -43,10 +36,19 @@ public class Constants {
 	public static final String ACTION_PACKAGE_ADDED = "virtual." + Intent.ACTION_PACKAGE_ADDED;
 	public static final String ACTION_PACKAGE_REMOVED = "virtual." + Intent.ACTION_PACKAGE_REMOVED;
 	public static final String ACTION_PACKAGE_CHANGED = "virtual." + Intent.ACTION_PACKAGE_CHANGED;
+
+
+	public static String META_KEY_IDENTITY = "X-Identity";
+	public static String META_VALUE_STUB = "Stub-User";
+	/**
+	 * Server process name of VA
+	 */
+	public static String SERVER_PROCESS_NAME = ":x";
 	/**
 	 * The activity who handle the shortcut.
 	 */
 	public static String SHORTCUT_PROXY_ACTIVITY_NAME = ShortcutHandleActivity.class.getName();
+
 
 	public static String ACTION_INSTALL_PACKAGE = "android.intent.action.VIRTUAL_INSTALL_PACKAGE";
 
@@ -58,4 +60,6 @@ public class Constants {
 
 	public static final String ACTION_USER_STARTED = "Virtual." + "android.intent.action.USER_STARTED";
 	public static final String INTENT_PARAM_1 = "param_1";
+
+	public static final String ACTION_PROXY_BROADCAST = "virtual.android.intent.action.PendingIntent";
 }
